@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GénéCode – Générateur QR & Code-barres</title>
+  <meta name="description" content="Générez facilement des QR Codes et des codes-barres en ligne. Personnalisez couleurs, taille et format, puis téléchargez en PNG." />
+
+  <!-- Bootstrap 5 CSS (local) -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  <!-- Bootstrap Icons (local) -->
+  <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css" />
+  <!-- Inter Font (local) -->
+  <link rel="stylesheet" href="assets/css/fonts.css" />
+
+  <!-- Styles applicatifs (local) -->
+  <link rel="stylesheet" href="assets/css/app.css" />
+
+
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div id="app" class="app-wrapper">
+  <div class="container" style="max-width:1140px">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-badge">
+        <i class="bi bi-qr-code"></i>
+        Generation instantanee
+      </div>
+      <h1 class="hero-title">GeneCode</h1>
+      <p class="hero-sub">Creez des QR Codes et des codes-barres professionnels en quelques secondes. Personnalisez, previsualisez et telechargez.</p>
+
+      <!-- Tab pills -->
+      <div class="tab-pills">
+        <button class="tab-pill" :class="{active: mode==='qr'}" @click="switchMode('qr')" id="tab-qr">
+          <i class="bi bi-qr-code-scan"></i> QR Code
+        </button>
+        <button class="tab-pill" :class="{active: mode==='barcode'}" @click="switchMode('barcode')" id="tab-barcode">
+          <i class="bi bi-upc-scan"></i> Code-barres
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="row g-4 mb-4">
+
+      <!-- Left: settings -->
+      <div class="col-lg-6">
+        <div class="card-glass h-100 p-4">
+
+          <!-- QR Section -->
+          <div v-if="mode==='qr'">
+            <!-- Sous-onglets de personnalisation -->
+            <div class="qr-subnav">
+              <button class="qr-subnav-btn" :class="{active: qrTab==='content'}" @click="qrTab='content'">
+                <i class="bi bi-fonts"></i> Contenu
+              </button>
+              <button class="qr-subnav-btn" :class="{active: qrTab==='shapes'}" @click="qrTab='shapes'">
+                <i class="bi bi-grid-3x3-gap"></i> Formes
+              </button>
+              <button class="qr-subnav-btn" :class="{active: qrTab==='colors'}" @click="qrTab='colors'">
+                <i class="bi bi-palette"></i> Couleurs
+              </button>
+              <button class="qr-subnav-btn" :class="{active: qrTab==='logo'}" @click="qrTab='logo'">
+                <i class="bi bi-image"></i> Logo
+              </button>
+              <button class="qr-subnav-btn" :class="{active: qrTab==='frame'}" @click="qrTab='frame'">
+                <i class="bi bi-aspect-ratio"></i> Cadre
+              </button>
+            </div>
+
+            <!-- Tab 1: Contenu -->
+            <div v-show="qrTab==='content'">
+              <div class="mb-3">
+                <label class="form-label">Contenu ou URL</label>
+                <textarea id="qr-content" class="form-control" v-model="qr.content" placeholder="URL, texte, email, téléphone..." @input="autoGenerate" rows="3"></textarea>
+                <div class="d-flex gap-2 mt-2 flex-wrap">
+                  <span class="info-chip" @click="qr.content='https://'; autoGenerate()" style="cursor:pointer"><i class="bi bi-globe2"></i> URL</span>
+                  <span class="info-chip" @click="prefillEmail" style="cursor:pointer"><i class="bi bi-envelope"></i> Email</span>
+                  <span class="info-chip" @click="prefillPhone" style="cursor:pointer"><i class="bi bi-telephone"></i> Tél</span>
+                  <span class="info-chip" @click="prefillWifi" style="cursor:pointer"><i class="bi bi-wifi"></i> Wi-Fi</span>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-6">
+                  <label class="form-label">Correction d'erreur</label>
+                  <select id="qr-ecl" class="form-select" v-model="qr.ecl" @change="autoGenerate">
+                    <option value="L">Faible (L - 7%)</option>
+                    <option value="M">Moyen (M - 15%)</option>
+                    <option value="Q">Élevé (Q - 25%)</option>
+                    <option value="H">Maximum (H - 30%)</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Taille (px) : {{ qr.size }}</label>
+                  <input id="qr-size" type="range" class="form-range" v-model.number="qr.size" min="180" max="600" step="10" @input="autoGenerate" />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Marge intérieure : {{ qr.margin }}px</label>
+                <input id="qr-margin" type="range" class="form-range" v-model.number="qr.margin" min="0" max="40" step="2" @input="autoGenerate" />
+              </div>
+            </div>
+
+            <!-- Tab 2: Formes & Points (Dots & Eyes) -->
+            <div v-show="qrTab==='shapes'">
+              <label class="form-label mb-2"><i class="bi bi-grid-fill me-1"></i> Style des points (Modules)</label>
+              <div class="opt-grid mb-4">
+                <div class="opt-card" :class="{active: qr.dotsType==='square'}" @click="qr.dotsType='square'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-square-fill"></i></div>
+                  <div class="opt-card-label">Carré</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.dotsType==='dots'}" @click="qr.dotsType='dots'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-circle-fill"></i></div>
+                  <div class="opt-card-label">Points</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.dotsType==='rounded'}" @click="qr.dotsType='rounded'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-app"></i></div>
+                  <div class="opt-card-label">Arrondi</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.dotsType==='extra-rounded'}" @click="qr.dotsType='extra-rounded'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-capsule"></i></div>
+                  <div class="opt-card-label">Bulle</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.dotsType==='classy'}" @click="qr.dotsType='classy'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-gem"></i></div>
+                  <div class="opt-card-label">Élégant</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.dotsType==='classy-rounded'}" @click="qr.dotsType='classy-rounded'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-flower1"></i></div>
+                  <div class="opt-card-label">Élégant +</div>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-6">
+                  <label class="form-label mb-2"><i class="bi bi-border me-1"></i> Coins extérieurs</label>
+                  <div class="opt-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="opt-card" :class="{active: qr.cornersSquareType==='square'}" @click="qr.cornersSquareType='square'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-square"></i></div>
+                      <div class="opt-card-label">Carré</div>
+                    </div>
+                    <div class="opt-card" :class="{active: qr.cornersSquareType==='extra-rounded'}" @click="qr.cornersSquareType='extra-rounded'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-app"></i></div>
+                      <div class="opt-card-label">Arrondi</div>
+                    </div>
+                    <div class="opt-card" :class="{active: qr.cornersSquareType==='dot'}" @click="qr.cornersSquareType='dot'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-circle"></i></div>
+                      <div class="opt-card-label">Cercle</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <label class="form-label mb-2"><i class="bi bi-bullseye me-1"></i> Centre des yeux</label>
+                  <div class="opt-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="opt-card" :class="{active: qr.cornersDotType==='square'}" @click="qr.cornersDotType='square'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-square-fill"></i></div>
+                      <div class="opt-card-label">Carré</div>
+                    </div>
+                    <div class="opt-card" :class="{active: qr.cornersDotType==='dot'}" @click="qr.cornersDotType='dot'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-circle-fill"></i></div>
+                      <div class="opt-card-label">Point</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Couleurs & Dégradés -->
+            <div v-show="qrTab==='colors'">
+              <!-- Nuancier de couleurs rapides -->
+              <label class="form-label mb-2"><i class="bi bi-palette-fill me-1"></i> Nuancier de couleurs rapides</label>
+              <div class="preset-list mb-4">
+                <div class="preset-chip" v-for="p in COLOR_PALETTES" :key="p.id" @click="applyColorPalette(p)">
+                  <span class="preset-swatch" :style="{background: p.swatch}"></span>
+                  {{ p.label }}
+                </div>
+              </div>
+
+              <!-- Type de couleur -->
+              <label class="form-label mb-2"><i class="bi bi-paint-bucket me-1"></i> Remplissage du QR</label>
+              <div class="opt-grid mb-3" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="opt-card" :class="{active: qr.colorType==='single'}" @click="qr.colorType='single'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-square-fill"></i></div>
+                  <div class="opt-card-label">Couleur unie</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.colorType==='linear'}" @click="qr.colorType='linear'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-bezier2"></i></div>
+                  <div class="opt-card-label">Dégradé Linéaire</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.colorType==='radial'}" @click="qr.colorType='radial'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-record-circle"></i></div>
+                  <div class="opt-card-label">Dégradé Radial</div>
+                </div>
+              </div>
+
+              <!-- Sélecteurs de couleur QR -->
+              <div class="row g-3 mb-3">
+                <div :class="qr.colorType!=='single' ? 'col-6' : 'col-12'">
+                  <label class="form-label">{{ qr.colorType!=='single' ? 'Couleur 1' : 'Couleur du QR' }}</label>
+                  <div class="d-flex gap-2 align-items-center">
+                    <input type="color" class="form-control" v-model="qr.fgColor" @input="onFgColorChange" />
+                    <input type="text" class="form-control" v-model="qr.fgColor" @input="onFgColorChange" />
+                  </div>
+                </div>
+                <div class="col-6" v-if="qr.colorType!=='single'">
+                  <label class="form-label">Couleur 2</label>
+                  <div class="d-flex gap-2 align-items-center">
+                    <input type="color" class="form-control" v-model="qr.gradColor2" @input="autoGenerate" />
+                    <input type="text" class="form-control" v-model="qr.gradColor2" @input="autoGenerate" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Angle du dégradé linéaire -->
+              <div class="mb-3" v-if="qr.colorType==='linear'">
+                <label class="form-label">Angle du dégradé : {{ qr.gradRotation }}°</label>
+                <input type="range" class="form-range" v-model.number="qr.gradRotation" min="0" max="360" step="15" @input="autoGenerate" />
+              </div>
+
+              <!-- Yeux personnalisés -->
+              <div class="mb-3">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="custom-eyes" v-model="qr.customEyes" @change="autoGenerate" />
+                  <label class="form-check-label text-light fw-medium" for="custom-eyes" style="font-size:.88rem">Couleur personnalisée des yeux</label>
+                </div>
+                <div class="row g-3" v-if="qr.customEyes">
+                  <div class="col-6">
+                    <label class="form-label" style="font-size:.78rem">Contour des yeux</label>
+                    <div class="d-flex gap-2 align-items-center">
+                      <input type="color" class="form-control" v-model="qr.eyeColor" @input="autoGenerate" />
+                      <input type="text" class="form-control" v-model="qr.eyeColor" @input="autoGenerate" />
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label" style="font-size:.78rem">Centre des yeux</label>
+                    <div class="d-flex gap-2 align-items-center">
+                      <input type="color" class="form-control" v-model="qr.eyeDotColor" @input="autoGenerate" />
+                      <input type="text" class="form-control" v-model="qr.eyeDotColor" @input="autoGenerate" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Couleur de fond -->
+              <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="form-label mb-0">Couleur d'arrière-plan</label>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="transparent-bg" v-model="qr.transparentBg" @change="autoGenerate" />
+                    <label class="form-check-label text-light fw-medium" for="transparent-bg" style="font-size:.78rem">Transparent</label>
+                  </div>
+                </div>
+                <div class="d-flex gap-2 align-items-center" v-if="!qr.transparentBg">
+                  <input type="color" class="form-control" v-model="qr.bgColor" @input="autoGenerate" />
+                  <input type="text" class="form-control" v-model="qr.bgColor" @input="autoGenerate" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 4: Logo central -->
+            <div v-show="qrTab==='logo'">
+              <!-- Logos intégrés -->
+              <label class="form-label mb-2"><i class="bi bi-stars me-1"></i> Logos prêts à l'emploi</label>
+              <div class="logo-grid mb-3">
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.target}" @click="selectBuiltinLogo('target')" title="Viseur / Cible">
+                  <img :src="ICONS.target" alt="Cible" />
+                </div>
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.download}" @click="selectBuiltinLogo('download')" title="Téléchargement">
+                  <img :src="ICONS.download" alt="Téléchargement" />
+                </div>
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.star}" @click="selectBuiltinLogo('star')" title="Étoile / Avis">
+                  <img :src="ICONS.star" alt="Étoile" />
+                </div>
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.heart}" @click="selectBuiltinLogo('heart')" title="Cœur">
+                  <img :src="ICONS.heart" alt="Cœur" />
+                </div>
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.wifi}" @click="selectBuiltinLogo('wifi')" title="Wi-Fi">
+                  <img :src="ICONS.wifi" alt="Wi-Fi" />
+                </div>
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.globe}" @click="selectBuiltinLogo('globe')" title="Web">
+                  <img :src="ICONS.globe" alt="Web" />
+                </div>
+                <div class="logo-btn" :class="{active: qr.logo===ICONS.camera}" @click="selectBuiltinLogo('camera')" title="Photo / Caméra">
+                  <img :src="ICONS.camera" alt="Caméra" />
+                </div>
+              </div>
+
+              <!-- Upload image personnalisée -->
+              <div class="mb-3">
+                <label class="form-label"><i class="bi bi-upload me-1"></i> Importer un logo personnalisé (PNG, SVG, JPG)</label>
+                <div class="d-flex gap-2 align-items-center">
+                  <input type="file" class="form-control" accept="image/*" @change="onLogoUpload" id="logo-file-input" />
+                  <button v-if="qr.logo" class="btn btn-outline-danger" @click="removeLogo" title="Supprimer le logo" style="white-space:nowrap">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Paramètres du logo -->
+              <div v-if="qr.logo" class="p-3 mb-2 rounded" style="background:var(--bg-card2); border:1px solid var(--border)">
+                <div class="mb-3">
+                  <label class="form-label">Taille du logo : {{ Math.round(qr.logoSize * 100) }}%</label>
+                  <input type="range" class="form-range" v-model.number="qr.logoSize" min="0.15" max="0.45" step="0.05" @input="autoGenerate" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Marge autour du logo : {{ qr.logoMargin }}px</label>
+                  <input type="range" class="form-range" v-model.number="qr.logoMargin" min="0" max="15" step="1" @input="autoGenerate" />
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="hide-dots" v-model="qr.hideBackgroundDots" @change="autoGenerate" />
+                  <label class="form-check-label text-muted" for="hide-dots" style="font-size:.85rem">Masquer les points derrière le logo</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 5: Cadre & Badge (Call-to-Action) -->
+            <div v-show="qrTab==='frame'">
+              <label class="form-label mb-2"><i class="bi bi-bounding-box-circles me-1"></i> Style de cadre</label>
+              <div class="opt-grid mb-3">
+                <div class="opt-card" :class="{active: qr.frame==='none'}" @click="qr.frame='none'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-x-circle"></i></div>
+                  <div class="opt-card-label">Aucun</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.frame==='download'}" @click="qr.frame='download'; qr.frameText='DOWNLOAD'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-chat-square-text"></i></div>
+                  <div class="opt-card-label">Download</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.frame==='rateus'}" @click="qr.frame='rateus'; qr.frameText='RATE US'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-card-text"></i></div>
+                  <div class="opt-card-label">Rate Us</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.frame==='scanme'}" @click="qr.frame='scanme'; qr.frameText='SCAN ME'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-capsule"></i></div>
+                  <div class="opt-card-label">Scan Me</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.frame==='simple'}" @click="qr.frame='simple'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-square"></i></div>
+                  <div class="opt-card-label">Arrondi</div>
+                </div>
+                <div class="opt-card" :class="{active: qr.frame==='circle'}" @click="qr.frame='circle'; autoGenerate()">
+                  <div class="opt-card-icon"><i class="bi bi-circle"></i></div>
+                  <div class="opt-card-label">Badge Rond</div>
+                </div>
+              </div>
+
+              <!-- Options du cadre si actif -->
+              <div v-if="qr.frame!=='none'" class="p-3 mb-2 rounded" style="background:var(--bg-card2); border:1px solid var(--border)">
+                <div class="mb-3" v-if="['download','rateus','scanme'].includes(qr.frame)">
+                  <label class="form-label">Texte du badge</label>
+                  <input type="text" class="form-control" v-model="qr.frameText" placeholder="Ex: DOWNLOAD, RATE US, SCANNEZ-MOI..." @input="autoGenerate" />
+                </div>
+
+                <!-- Position du texte / badge -->
+                <div class="mb-3" v-if="['download','rateus','scanme'].includes(qr.frame)">
+                  <label class="form-label mb-2"><i class="bi bi-arrows-vertical me-1"></i> Position du texte</label>
+                  <div class="opt-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="opt-card" :class="{active: (qr.framePosition || (qr.frame==='scanme'?'top':'bottom'))==='top'}" @click="qr.framePosition='top'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-arrow-up-circle"></i></div>
+                      <div class="opt-card-label">En haut</div>
+                    </div>
+                    <div class="opt-card" :class="{active: (qr.framePosition || (qr.frame==='scanme'?'top':'bottom'))==='bottom'}" @click="qr.framePosition='bottom'; autoGenerate()">
+                      <div class="opt-card-icon"><i class="bi bi-arrow-down-circle"></i></div>
+                      <div class="opt-card-label">En bas</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0">Couleur du cadre</label>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" @click="syncFrameColor" style="font-size:.78rem; color:var(--accent2)">
+                      <i class="bi bi-arrow-repeat me-1"></i> Synchroniser avec le QR
+                    </button>
+                  </div>
+                  <div class="d-flex gap-2 align-items-center">
+                    <input type="color" class="form-control" v-model="qr.frameColor" @input="autoGenerate" />
+                    <input type="text" class="form-control" v-model="qr.frameColor" @input="autoGenerate" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Barcode Section -->
+          <div v-if="mode==='barcode'">
+            <p class="section-title"><i class="bi bi-sliders me-1"></i> Configuration Code-barres</p>
+
+            <div class="mb-3">
+              <label class="form-label">Contenu</label>
+              <input id="bc-content" type="text" class="form-control" v-model="bc.content" placeholder="Ex: 123456789012" @input="autoGenerate" />
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label">Format</label>
+                <select id="bc-format" class="form-select" v-model="bc.format" @change="onFormatChange">
+                  <optgroup label="EAN / UPC">
+                    <option value="EAN13">EAN-13</option>
+                    <option value="EAN8">EAN-8</option>
+                    <option value="UPC">UPC-A</option>
+                    <option value="EAN5">EAN-5</option>
+                    <option value="EAN2">EAN-2</option>
+                  </optgroup>
+                  <optgroup label="Code">
+                    <option value="CODE128">Code 128</option>
+                    <option value="CODE39">Code 39</option>
+                    <option value="CODE93">Code 93</option>
+                  </optgroup>
+                  <optgroup label="Autre">
+                    <option value="ITF14">ITF-14</option>
+                    <option value="MSI">MSI</option>
+                    <option value="pharmacode">Pharmacode</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Largeur barre</label>
+                <input id="bc-width" type="number" class="form-control" v-model.number="bc.width" min="1" max="5" step="0.5" @change="autoGenerate" />
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label">Couleur barres</label>
+                <div class="d-flex gap-2 align-items-center">
+                  <input id="bc-fg" type="color" class="form-control" v-model="bc.fgColor" @input="autoGenerate" />
+                  <input type="text" class="form-control" v-model="bc.fgColor" @input="autoGenerate" />
+                </div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Couleur fond</label>
+                <div class="d-flex gap-2 align-items-center">
+                  <input id="bc-bg" type="color" class="form-control" v-model="bc.bgColor" @input="autoGenerate" />
+                  <input type="text" class="form-control" v-model="bc.bgColor" @input="autoGenerate" />
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label">Hauteur (px)</label>
+                <input id="bc-height" type="number" class="form-control" v-model.number="bc.height" min="20" max="400" step="10" @change="autoGenerate" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">Police (px)</label>
+                <input id="bc-fontsize" type="number" class="form-control" v-model.number="bc.fontSize" min="0" max="40" step="2" @change="autoGenerate" />
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="bc-label" v-model="bc.displayValue" @change="autoGenerate" />
+                <label class="form-check-label text-muted" for="bc-label" style="font-size:.88rem">Afficher la valeur sous le code</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="divider mb-4"></div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button id="btn-generate" class="btn-generate flex-fill" @click="generate" :disabled="!currentContent">
+              <i class="bi bi-magic"></i> Générer
+            </button>
+            <button class="btn-reset" @click="resetForm" id="btn-reset" title="Réinitialiser">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: preview -->
+      <div class="col-lg-6">
+        <div class="card-glass h-100 p-4 d-flex flex-column">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <p class="section-title mb-0"><i class="bi bi-eye me-1"></i> Aperçu en temps réel</p>
+            <div v-if="generated" class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
+              <span class="info-chip"><span class="dot"></span>Prêt</span>
+            </div>
+          </div>
+
+          <div class="preview-zone flex-fill">
+            <!-- Placeholder -->
+            <div class="preview-placeholder" v-if="!generated">
+              <i :class="mode==='qr' ? 'bi bi-qr-code' : 'bi bi-upc'"></i>
+              <p>Configurez et cliquez sur <strong>Générer</strong></p>
+            </div>
+
+            <!-- QR container avec cadre -->
+            <div v-if="generated && mode==='qr'" class="preview-canvas-wrap">
+              <div class="qr-frame-wrapper" :class="['frame-' + qr.frame, 'pos-' + qr.framePosition]" :style="'--frame-color: ' + qr.frameColor">
+                <!-- Texte en haut -->
+                <span v-if="qr.framePosition==='top' && qr.frame==='scanme'" class="qr-frame-top-pill">{{ qr.frameText || 'SCAN ME' }}</span>
+                <span v-if="qr.framePosition==='top' && qr.frame==='download'" class="qr-frame-bubble">{{ qr.frameText || 'DOWNLOAD' }}</span>
+                <div v-if="qr.framePosition==='top' && qr.frame==='rateus'" class="qr-frame-footer-banner">{{ qr.frameText || 'RATE US' }}</div>
+
+                <div id="qr-container"></div>
+
+                <!-- Texte en bas -->
+                <span v-if="qr.framePosition==='bottom' && qr.frame==='scanme'" class="qr-frame-top-pill">{{ qr.frameText || 'SCAN ME' }}</span>
+                <span v-if="qr.framePosition==='bottom' && qr.frame==='download'" class="qr-frame-bubble">{{ qr.frameText || 'DOWNLOAD' }}</span>
+                <div v-if="qr.framePosition==='bottom' && qr.frame==='rateus'" class="qr-frame-footer-banner">{{ qr.frameText || 'RATE US' }}</div>
+              </div>
+            </div>
+
+            <!-- Barcode svg -->
+            <div v-if="generated && mode==='barcode'" class="preview-canvas-wrap">
+              <svg id="bc-svg"></svg>
+            </div>
+
+            <!-- Error -->
+            <div v-if="genError" class="text-center text-danger mt-2" style="font-size:.85rem">
+              <i class="bi bi-exclamation-triangle me-1"></i>{{ genError }}
+            </div>
+          </div>
+
+          <!-- Download bar -->
+          <div v-if="generated && !genError" class="mt-4">
+            <div class="divider mb-3"></div>
+            <div class="d-flex gap-2 flex-wrap align-items-center justify-content-between">
+              <div>
+                <div style="font-size:.8rem;color:var(--text-muted)">Exportation</div>
+                <div style="font-size:.9rem;font-weight:600">{{ mode==='qr' ? (qr.frame!=='none' ? 'PNG Haute Résolution (avec cadre)' : 'PNG & SVG Vectoriel') : 'PNG Haute Définition' }}</div>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <button class="btn-copy" @click="copyToClipboard" id="btn-copy">
+                  <i :class="copied ? 'bi bi-check2' : 'bi bi-clipboard'"></i>
+                  {{ copied ? 'Copié !' : 'Copier' }}
+                </button>
+                <a id="btn-download" class="btn-download" @click.prevent="downloadImage('png')" href="#">
+                  <i class="bi bi-download"></i> Télécharger PNG
+                </a>
+                <a v-if="mode==='qr'" class="btn-download" @click.prevent="downloadImage('svg')" href="#" style="background:var(--bg-card2);border:1px solid var(--border)">
+                  <i class="bi bi-filetype-svg"></i> SVG
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card-glass p-4 mb-4" v-if="history.length">
+      <p class="section-title"><i class="bi bi-clock-history me-1"></i> Historique récent</p>
+      <div class="row g-2">
+        <div class="col-md-6 col-lg-4" v-for="(item, idx) in history.slice().reverse()" :key="idx">
+          <div class="history-item" @click="restoreHistory(item)">
+            <div class="history-thumb">
+              <img :src="item.dataUrl" :alt="item.content" />
+            </div>
+            <div class="history-meta">
+              <div class="history-text">{{ item.content }}</div>
+              <div class="history-type">
+                <i :class="item.mode==='qr' ? 'bi bi-qr-code-scan' : 'bi bi-upc-scan'" class="me-1"></i>
+                {{ item.mode==='qr' ? 'QR Code' : 'Code-barres' }}
+                <span v-if="item.mode==='barcode'"> - {{ item.format }}</span>
+              </div>
+            </div>
+            <i class="bi bi-arrow-return-right text-muted" style="font-size:.85rem"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>Fait avec <span>coeur</span> GeneCode 2025 Vue.js 3 + Bootstrap 5</p>
+  </footer>
+
+  <!-- Toasts -->
+  <div class="toast-container">
+    <div class="toast-item" :class="toast.type" v-for="toast in toasts" :key="toast.id">
+      <i :class="toast.type==='success' ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"></i>
+      {{ toast.message }}
+    </div>
+  </div>
+</div>
+
+
+<!-- Bootstrap JS bundle (local) -->
+<script src="assets/js/bootstrap.bundle.min.js"></script>
+<!-- QRCodeStyling (local) -->
+<script src="assets/js/qr-code-styling.js"></script>
+<!-- JsBarcode (local) -->
+<script src="assets/js/JsBarcode.all.min.js"></script>
+<!-- Vue 3 (local) -->
+<script src="assets/js/vue.global.prod.js"></script>
+
+<!-- Application JS (local) -->
+<script src="assets/js/app.js"></script>
+</body>
+</html>
